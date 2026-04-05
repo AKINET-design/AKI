@@ -33,14 +33,15 @@ body {
   background: var(--bg);
   color: var(--text);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   font-size: 15px;
   line-height: 1.5;
 }
 
 /* ===================== LAYOUT ===================== */
-#pantalla-inicio { display: none; align-items: center; justify-content: center; height: 100vh; }
-#app { display: none; height: 100vh; }
+#pantalla-inicio { display: none; align-items: center; justify-content: center; height: 100vh; height: 100dvh; }
+#app { display: none; height: 100vh; height: 100dvh; }
 
 /* ===================== SETUP ===================== */
 .setup-card {
@@ -747,7 +748,72 @@ body {
   color: var(--text2);
 }
 .modelo-item:last-child { border-bottom: none; }
+
+/* ===================== MÓVIL ===================== */
+#overlay-sidebar {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+}
+#overlay-sidebar.visible { display: block; }
+
+@media (max-width: 640px) {
+  /* Sidebar deslizable por encima del contenido */
+  #sidebar {
+    position: fixed !important;
+    top: 0; left: 0;
+    height: 100dvh;
+    z-index: 100;
+    width: 280px !important;
+    min-width: 280px !important;
+    border-right: 1px solid var(--border) !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  #sidebar.abierto { transform: translateX(0); }
+  #sidebar.colapsado {
+    width: 280px !important;
+    min-width: 280px !important;
+  }
+
+  /* Topbar: compacto */
+  #topbar { padding: 0 10px; gap: 6px; height: 46px; }
+  #selector-modelo { max-width: 130px; font-size: 11px; padding: 4px 6px; }
+  #topbar .btn-icono { font-size: 16px; }
+
+  /* Mensajes: menos padding horizontal */
+  #area-mensajes { padding: 12px; }
+
+  /* Input: pega al teclado con safe area para notch/home bar de iPhone */
+  #area-input {
+    padding: 8px 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  /* Burbujas: más anchas en pantalla pequeña */
+  .burbuja-usuario { max-width: 90%; }
+  .burbuja-ai { max-width: 97%; font-size: 15px; }
+
+  /* Modales: pantalla completa en móvil */
+  .modal-caja {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+}
 </style>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff3d87">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi IA">
+<link rel="apple-touch-icon" href="icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -789,6 +855,7 @@ body {
 <div id="app">
 
   <!-- SIDEBAR -->
+  <div id="overlay-sidebar" onclick="cerrarSidebarMovil()"></div>
   <div id="sidebar">
     <div class="sidebar-header">
       <span class="sidebar-titulo">💬 Chats</span>
@@ -2134,13 +2201,16 @@ function autoAltura(el) {
 
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
-  // En desktop: colapsar/expandir
   if (window.innerWidth > 640) {
     sb.classList.toggle('colapsado');
   } else {
-    // En móvil: slide
-    sb.classList.toggle('abierto');
+    const abierto = sb.classList.toggle('abierto');
+    document.getElementById('overlay-sidebar').classList.toggle('visible', abierto);
   }
+}
+function cerrarSidebarMovil() {
+  document.getElementById('sidebar').classList.remove('abierto');
+  document.getElementById('overlay-sidebar').classList.remove('visible');
 }
 
 // ============================================================
@@ -2828,6 +2898,11 @@ async function iniciar() {
     document.getElementById('pantalla-inicio').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     renderApp();
+  }
+
+  // Registrar Service Worker (PWA)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
   // Restaurar sesión Supabase si el usuario ya había hecho login
